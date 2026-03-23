@@ -3,6 +3,7 @@
 Common mistakes in skill creation and how to fix them.
 
 ## Contents
+
 - [Too Verbose](#too-verbose)
 - [Too Many Options](#too-many-options)
 - [Missing Error Handling](#missing-error-handling)

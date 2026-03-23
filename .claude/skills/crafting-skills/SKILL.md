@@ -19,6 +19,7 @@ and quality review.
 Determine which mode to use based on user input and `$ARGUMENTS`:
 
 **Review Mode** -- if any of these are true:
+
 - `$ARGUMENTS` contains a file path to an existing SKILL.md
 - User says "review", "improve", "check", "audit", or "fix"
 - User references an existing skill by name
@@ -26,6 +27,7 @@ Determine which mode to use based on user input and `$ARGUMENTS`:
 If Review Mode, skip to the **Review Mode** section below.
 
 **Create Mode** -- if any of these are true:
+
 - User says "create", "build", "new", "write", or "make"
 - No existing skill is referenced
 
@@ -54,6 +56,7 @@ Ask the user all of these questions in a single numbered list:
 6. **Supporting files**: Will it need reference files, scripts, templates, or assets beyond the main SKILL.md?
 
 After receiving answers:
+
 - Summarize your understanding back to the user in 3-4 sentences
 - Ask: "Does this capture what you need, or should I adjust anything?"
 - If anything is unclear, ask follow-up questions. Do not assume.
@@ -75,6 +78,7 @@ description: <description>
 ```
 
 **Name rules:**
+
 - Kebab-case only (lowercase letters, numbers, hyphens)
 - Max 64 characters
 - Must NOT contain "claude" or "anthropic" (reserved)
@@ -82,6 +86,7 @@ description: <description>
 - Prefer gerund form (e.g., `processing-pdfs`, `analyzing-spreadsheets`)
 
 **Description rules:**
+
 - Follow the formula: [What it does] + [When to use it] + [Key capabilities]
 - Include specific trigger phrases users would actually say
 - Write in third person
@@ -89,6 +94,7 @@ description: <description>
 - No XML angle brackets
 
 **Optional frontmatter fields** -- add only if needed:
+
 - `disable-model-invocation: true` -- for skills the user should trigger manually (deploys, sends, destructive actions)
 - `user-invocable: false` -- for background knowledge Claude should use but users shouldn't invoke directly
 - `allowed-tools` -- to restrict which tools Claude can use
@@ -107,28 +113,34 @@ Structure the instructions with clear sections:
 ## Instructions
 
 ### Step 1: [First Major Step]
+
 Clear explanation of what happens.
 
 ### Step 2: [Second Major Step]
+
 Clear explanation of what happens.
 
 ## Examples
 
 ### Example 1: [Common scenario]
+
 User says: "..."
 Actions:
+
 1. ...
 2. ...
-Result: ...
+   Result: ...
 
 ## Common Issues
 
 ### [Error or edge case]
+
 Cause: [Why it happens]
 Solution: [How to fix it]
 ```
 
 **Instruction quality rules:**
+
 - Be specific and actionable. Not "validate the data" but "Run `python scripts/validate.py --input {filename}` to check data format"
 - Include error handling for likely failure scenarios
 - Put critical instructions near the top or under `## Important` headers
@@ -138,10 +150,12 @@ Solution: [How to fix it]
 #### Step 2c: Draft Reference Files (if needed)
 
 Only create reference files if:
+
 - The SKILL.md body would exceed ~300 lines without them
 - The content is genuinely reference material (checklists, API docs, lookup tables, many examples)
 
 For each reference file:
+
 - Place in a `references/` subdirectory
 - Name descriptively (e.g., `api-patterns.md`, not `doc2.md`)
 - Link from SKILL.md with context: "For rate limiting guidance, see [references/api-patterns.md](references/api-patterns.md)"
@@ -150,6 +164,7 @@ For each reference file:
 #### Step 2d: Present the Draft
 
 Present the complete draft to the user:
+
 1. Show the full SKILL.md content
 2. Show each reference file's content
 3. Show the planned directory structure:
@@ -215,10 +230,12 @@ Spawn a forked Explore sub-agent with the following instructions:
 > **Overall Assessment**: Good / Needs Work / Major Issues
 >
 > **Checklist Results**:
+>
 > - [item]: PASS/FAIL - [explanation]
 > - ...
 >
 > **Issues Found** (numbered, by severity):
+>
 > - Critical: [issues that would prevent the skill from working]
 > - Warning: [issues that degrade quality or cause problems]
 > - Suggestion: [improvements that would enhance the skill]
@@ -227,6 +244,7 @@ Spawn a forked Explore sub-agent with the following instructions:
 > For each issue, provide a specific fix (not "improve the description" but the actual improved description text).
 >
 > **Triggering Assessment**:
+>
 > - Phrases that WOULD trigger this skill: [list 3-5]
 > - Phrases that SHOULD trigger but might NOT: [list any]
 > - Phrases that SHOULD NOT trigger but MIGHT: [list any]
