@@ -15,7 +15,8 @@ eval "$(echo "$input" | jq -r '
   @sh "output_tokens=\(.context_window.total_output_tokens // "")",
   @sh "duration_ms=\(.cost.total_duration_ms // "")",
   @sh "rate_5h=\(.rate_limits.five_hour.used_percentage // "")",
-  @sh "rate_7d=\(.rate_limits.seven_day.used_percentage // "")"
+  @sh "rate_7d=\(.rate_limits.seven_day.used_percentage // "")",
+  @sh "current_dir=\(.workspace.current_dir // "")"
 ')"
 
 # Git branch (reads .git/HEAD — fast, no network)
@@ -49,6 +50,10 @@ color_for_pct() {
 # --- Model ---
 short_model="${model_name#Claude }"
 short_model="${short_model:-...}"
+
+# --- Directory (show just the basename) ---
+dir_name="${current_dir##*/}"
+dir_name="${dir_name:-?}"
 
 # --- Context progress bar (10 chars) + token count ---
 format_tokens() {
@@ -111,4 +116,4 @@ else
 fi
 
 # --- Assemble and output ---
-echo -e "Model: ${CYAN}${short_model}${RESET} ${DIM}|${RESET} Context: ${ctx_display} ${DIM}|${RESET} Branch: ${MAGENTA}${branch}${RESET} ${DIM}|${RESET} Usage: ${rate_5h_display} ${rate_7d_display} ${DIM}|${RESET} Session: ${BLUE}${dur_display}${RESET}"
+echo -e "Dir: ${YELLOW}${dir_name}${RESET} ${DIM}|${RESET} Model: ${CYAN}${short_model}${RESET} ${DIM}|${RESET} Context: ${ctx_display} ${DIM}|${RESET} Branch: ${MAGENTA}${branch}${RESET} ${DIM}|${RESET} Usage: ${rate_5h_display} ${rate_7d_display} ${DIM}|${RESET} Session: ${BLUE}${dur_display}${RESET}"
