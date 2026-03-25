@@ -93,13 +93,27 @@ for sync_dir in "${sync_dirs[@]}"; do
   rsync -av "${source}/" "${target}/"
 done
 
-# Copy individual files
+# Copy individual files to ~/.claude/, rewriting paths as needed.
+#
+# The repo's settings.json uses $CLAUDE_PROJECT_DIR to reference hook scripts
+# (e.g. "$CLAUDE_PROJECT_DIR/.claude/hooks/status-line.sh"). This works when
+# Claude Code loads the file as project-level config, because it sets that
+# env var to the project root.
+#
+# However, when we copy settings.json to ~/.claude/ for global use,
+# $CLAUDE_PROJECT_DIR won't be set (it's only defined per-project). So we
+# rewrite those paths to use $HOME instead, since setup.sh has already synced
+# the hooks/ directory to ~/.claude/hooks/.
+#
+# Example: "$CLAUDE_PROJECT_DIR/.claude/hooks/foo.sh" -> "$HOME/.claude/hooks/foo.sh"
 for sync_file in "${sync_files[@]}"; do
   source="${repo_claude}/${sync_file}"
   if [[ ! -f "${source}" ]]; then
     continue
   fi
-  cp -v "${source}" "${dest_claude}/${sync_file}"
+  sed 's|\$CLAUDE_PROJECT_DIR/\.claude/hooks/|\$HOME/.claude/hooks/|g' \
+    "${source}" > "${dest_claude}/${sync_file}"
+  echo "'${source}' -> '${dest_claude}/${sync_file}'"
 done
 
 echo ""
