@@ -1,5 +1,16 @@
 # Rules
 
+## CRITICAL: This repo is the source of truth
+
+**ALL new files (skills, hooks, scripts, config) MUST be created inside this repo (`claude-config`), NEVER directly in `~/.claude/`.**
+
+The `~/.claude/` directory is a deployment target -- it is populated by `setup.sh` syncing FROM this repo. Writing files directly to `~/.claude/` means they will be overwritten on the next sync and lost. If you create a file in `~/.claude/` instead of this repo, you have made a mistake. There are no exceptions to this rule.
+
+- New skills go in `.claude/skills/<skill-name>/` in THIS repo
+- New hooks go in `.claude/hooks/` in THIS repo
+- Config changes go in `.claude/` in THIS repo
+- `setup.sh` handles deployment to `~/.claude/`
+
 ## Plans
 
 ### CRITICAL: Requirements first, implementation second
