@@ -5,11 +5,12 @@ show_help() {
   cat <<'HELP'
 Usage: setup.sh [-h|--help]
 
-Syncs hooks/ and skills/ from this repo's .claude/ directory to ~/.claude/
-using rsync. Other files in ~/.claude/ are left untouched.
+Syncs hooks/, skills/, settings.json, and CLAUDE.md from this repo's
+.claude/ directory to ~/.claude/ using rsync. Other files in ~/.claude/
+are left untouched.
 
-If the destination directories already contain files, you will be shown
-what exists and prompted before continuing.
+If the destination already contains files that would be overwritten,
+you will be shown what exists and prompted before continuing.
 
 Warns if the repo's .claude/ contains directories not in the sync list.
 
@@ -29,6 +30,7 @@ repo_claude="${repo_dir}/.claude"
 dest_claude="${HOME}/.claude"
 
 sync_dirs=("hooks" "skills")
+sync_files=("settings.json" "CLAUDE.md")
 
 # Warn about directories in repo .claude/ that won't be synced
 for entry in "${repo_claude}"/*/; do
@@ -46,7 +48,7 @@ for entry in "${repo_claude}"/*/; do
   fi
 done
 
-# Check for existing files in destination directories
+# Check for existing files in destination
 existing_files=()
 for sync_dir in "${sync_dirs[@]}"; do
   target="${dest_claude}/${sync_dir}"
@@ -54,6 +56,12 @@ for sync_dir in "${sync_dirs[@]}"; do
     while IFS= read -r file; do
       existing_files+=("${file}")
     done < <(find "${target}" -type f | sort)
+  fi
+done
+for sync_file in "${sync_files[@]}"; do
+  target="${dest_claude}/${sync_file}"
+  if [[ -f "${target}" ]]; then
+    existing_files+=("${target}")
   fi
 done
 
@@ -83,6 +91,15 @@ for sync_dir in "${sync_dirs[@]}"; do
   rm -rf "${target}"
   mkdir -p "${target}"
   rsync -av "${source}/" "${target}/"
+done
+
+# Copy individual files
+for sync_file in "${sync_files[@]}"; do
+  source="${repo_claude}/${sync_file}"
+  if [[ ! -f "${source}" ]]; then
+    continue
+  fi
+  cp -v "${source}" "${dest_claude}/${sync_file}"
 done
 
 echo ""
