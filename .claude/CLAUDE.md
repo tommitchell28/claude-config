@@ -11,6 +11,21 @@ The `~/.claude/` directory is a deployment target -- it is populated by `setup.s
 - Config changes go in `.claude/` in `claude-config`
 - `setup.sh` handles deployment to `~/.claude/`
 
+## CRITICAL: Small atomic commits as you go
+
+**Do NOT batch all changes into a single commit at the end of a task. Commit early and commit often.**
+
+- Make small, focused commits after each logical unit of work (e.g., a single file change, a single feature addition, a bug fix, a refactor step)
+- Each commit must represent one coherent change — not a mix of unrelated modifications
+- Commit immediately after completing each step, not at the end of the task
+- Never accumulate uncommitted work across multiple steps
+- Use **conventional commit** format for all commit messages: `type(scope): description`
+  - Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`, `build`, `ci`, `perf`
+  - Scope is optional but encouraged (e.g., `feat(auth): add login endpoint`)
+  - Description must be lowercase, imperative mood, no period at the end
+
+This is non-negotiable. Large "dump everything" commits are unacceptable.
+
 ## Plans
 
 ### CRITICAL: Requirements first, implementation second
