@@ -91,7 +91,8 @@ when paired with a closing keyword.
 Examples:
 
 - Same repo: `Closes #68`
-- Cross-repo: `Closes tommitchell28/wagtails-website-v2#68`
+- Cross-repo: `Closes owner/repo#68` (substitute the actual `owner` and
+  `repo` slugs)
 
 ## Step 3: Validate the issue exists
 
@@ -103,7 +104,7 @@ issue is real:
 gh issue view 68
 
 # Cross-repo
-gh issue view 68 --repo tommitchell28/wagtails-website-v2
+gh issue view 68 --repo owner/repo
 ```
 
 If the command fails (issue does not exist, wrong repo, etc.):
@@ -254,12 +255,12 @@ User earlier said: "let's fix #42, the login bug." Now says: "open a PR".
 
 ### Example 2: Cross-repo issue
 
-User says: "open a PR in claude-config that closes wagtails-website-v2#68".
+User says: "open a PR in tooling-repo that closes app-repo#68".
 
 1. Pre-flight checks pass.
-2. Cross-repo reference: `tommitchell28/wagtails-website-v2#68`.
-3. `gh issue view 68 --repo tommitchell28/wagtails-website-v2` → exists.
-4. Body: `Closes tommitchell28/wagtails-website-v2#68`.
+2. Cross-repo reference: `acme/app-repo#68`.
+3. `gh issue view 68 --repo acme/app-repo` → exists.
+4. Body: `Closes acme/app-repo#68`.
 5. `gh pr create`.
 
 ### Example 3: No associated issue
