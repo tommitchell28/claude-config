@@ -74,7 +74,10 @@ through these sources, in order:
    `feat/68-add-login`, `fix-issue-72`). Extract candidate numbers but
    treat them as a hint, not a confirmation.
 
-3. **Ask the user.** If no issue can be inferred with confidence, ask
+3. **Commit messages.** Run `git log <default-branch>..HEAD --oneline`
+   and look for `#N` references. Treat as a hint, not a confirmation.
+
+4. **Ask the user.** If no issue can be inferred with confidence, ask
    explicitly before proceeding:
 
    > "Which GitHub issue does this PR address? Reply with `#N`,
