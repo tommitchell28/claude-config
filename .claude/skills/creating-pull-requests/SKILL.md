@@ -155,9 +155,13 @@ user.
 
 ## Bundled files
 
+Read these as needed during the workflow:
+
 - [templates/pr-body.md](templates/pr-body.md) — PR body template,
-  multi-issue and cross-repo rules, heredoc invocation pattern
-- [references/examples.md](references/examples.md) — walked-through
-  scenarios for the most common situations
+  multi-issue and cross-repo rules, heredoc invocation pattern. Open
+  before composing the body in Step 5.
+- [references/examples.md](references/examples.md) — six walked-through
+  scenarios. Skim if the situation looks unusual (cross-repo, no issue,
+  partial closure, multi-issue).
 - [references/troubleshooting.md](references/troubleshooting.md) — common
-  errors and how to handle them
+  errors. Open if any `git` or `gh` command fails.
