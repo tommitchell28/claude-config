@@ -141,8 +141,13 @@ Refs #15
 ```
 
 If there is no associated issue, the section content is the literal word
-`None` on its own line. Confirm with the user before using `None` — it
-should be a deliberate choice, not the default.
+`None` on its own line. Before using `None`, ask:
+
+> "This PR has no linked issue. Confirm you want to open it with
+> `## Linked issue` set to `None`?"
+
+User must explicitly confirm. `None` is a deliberate choice, not the
+default.
 
 ## Step 5: Compose the PR
 
@@ -213,9 +218,13 @@ EOF
 )"
 ```
 
-Default to ready-for-review. Use `--draft` only when the user asks for it,
-or when commits/code clearly indicate work in progress (e.g. "WIP" in
-recent commits, failing tests on purpose).
+Default to ready-for-review. Use `--draft` only when:
+
+- The user explicitly asks for a draft.
+- Recent commit messages contain `WIP`, `TODO`, or `in progress`.
+- Tests are intentionally skipped or failing.
+- The diff contains obvious debug code (`console.log`, `dbg!`, etc.) the
+  user has not removed.
 
 ## Step 7: Stop
 
