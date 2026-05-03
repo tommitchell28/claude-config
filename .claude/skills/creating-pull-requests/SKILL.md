@@ -3,11 +3,11 @@ name: creating-pull-requests
 description: >-
   Creates GitHub pull requests with a body that always links the associated
   issue, so merging the PR auto-closes the issue. Use when the user asks to
-  "create a PR", "open a pull request", "push and PR", "raise a PR", or any
-  natural phrasing that ends in opening a pull request via the GitHub CLI.
-  Owns the full PR-creation flow: gathers context, infers or asks for the
-  linked issue, validates it, builds the PR body from a fixed template, and
-  invokes `gh pr create`.
+  "create a PR", "open a pull request", "raise a PR", "submit a PR", "make
+  a PR", "push and PR", or any natural phrasing that ends in opening a pull
+  request via the GitHub CLI. Owns the full PR-creation flow: gathers
+  context, infers or asks for the linked issue, validates it, builds the PR
+  body from a fixed template, and invokes `gh pr create`.
 ---
 
 # Creating Pull Requests
