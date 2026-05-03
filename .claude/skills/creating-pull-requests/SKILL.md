@@ -114,7 +114,7 @@ default.
 ## Step 5: Compose the PR body
 
 The body must follow the template in
-[references/pr-body-template.md](references/pr-body-template.md). It defines
+[templates/pr-body.md](templates/pr-body.md). It defines
 the four required sections (`## Linked issue`, `## Summary`, `## Test
 plan`, footer), the multi-issue and cross-repo rules, and the
 `gh pr create --body "$(cat <<'EOF' ... EOF)"` heredoc invocation pattern.
@@ -153,10 +153,10 @@ labels, base-branch overrides, detection of an existing PR for the branch,
 or `gh` authentication failures. Surface any `gh` errors verbatim to the
 user.
 
-## Reference files
+## Bundled files
 
-- [references/pr-body-template.md](references/pr-body-template.md) — body
-  template, multi-issue and cross-repo rules, heredoc invocation
+- [templates/pr-body.md](templates/pr-body.md) — PR body template,
+  multi-issue and cross-repo rules, heredoc invocation pattern
 - [references/examples.md](references/examples.md) — walked-through
   scenarios for the most common situations
 - [references/troubleshooting.md](references/troubleshooting.md) — common
