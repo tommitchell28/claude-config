@@ -54,5 +54,7 @@ type_label="$(prompt_type_label "$notification_type")"
 title="${project}${branch:+ (${branch})} — ${type_label}"
 body="${message}${session_id:+ [session ${session_id:0:6}]}"
 
-# A failed notification must never disrupt the session
-notify-send --urgency=critical --app-name="Claude Code" "${title}" "${body}" || true
+# Normal urgency auto-dismisses after ~5s on GNOME (critical would persist
+# until manually closed). A failed notification must never disrupt the session.
+notify-send --urgency=normal --expire-time=5000 --app-name="Claude Code" \
+  "${title}" "${body}" || true
