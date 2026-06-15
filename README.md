@@ -8,4 +8,5 @@ Source of truth for `~/.claude/` configuration. Tracks settings, plugins config,
 ./setup.sh
 ```
 
-Syncs the repo's `.claude/` directory to `~/.claude/` using `rsync -av`.
+Syncs the repo's `.claude/` directory to `~/.claude/` using `rsync -av`, and
+copies the repo-root `.mcp.json` to `~/.mcp.json`.

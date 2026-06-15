@@ -9,6 +9,8 @@ Syncs hooks/, skills/, settings.json, and CLAUDE.md from this repo's
 .claude/ directory to ~/.claude/ using rsync. Other files in ~/.claude/
 are left untouched.
 
+Also copies the repo-root .mcp.json to ~/.mcp.json.
+
 If the destination already contains files that would be overwritten,
 you will be shown what exists and prompted before continuing.
 
@@ -31,6 +33,10 @@ dest_claude="${HOME}/.claude"
 
 sync_dirs=("hooks" "skills")
 sync_files=("settings.json" "CLAUDE.md")
+
+# .mcp.json lives at the repo root (not in .claude/) and deploys to ~/.mcp.json.
+mcp_source="${repo_dir}/.mcp.json"
+mcp_dest="${HOME}/.mcp.json"
 
 # Warn about directories in repo .claude/ that won't be synced
 for entry in "${repo_claude}"/*/; do
@@ -64,6 +70,9 @@ for sync_file in "${sync_files[@]}"; do
     existing_files+=("${target}")
   fi
 done
+if [[ -f "${mcp_dest}" ]]; then
+  existing_files+=("${mcp_dest}")
+fi
 
 if [[ ${#existing_files[@]} -gt 0 ]]; then
   echo "The following files already exist in the destination:"
@@ -115,6 +124,12 @@ for sync_file in "${sync_files[@]}"; do
     "${source}" > "${dest_claude}/${sync_file}"
   echo "'${source}' -> '${dest_claude}/${sync_file}'"
 done
+
+# Copy the repo-root .mcp.json to ~/.mcp.json so MCP servers are available globally.
+if [[ -f "${mcp_source}" ]]; then
+  cp "${mcp_source}" "${mcp_dest}"
+  echo "'${mcp_source}' -> '${mcp_dest}'"
+fi
 
 echo ""
 echo "Sync complete."
