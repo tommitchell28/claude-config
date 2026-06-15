@@ -9,7 +9,9 @@ Syncs hooks/, skills/, settings.json, and CLAUDE.md from this repo's
 .claude/ directory to ~/.claude/ using rsync. Other files in ~/.claude/
 are left untouched.
 
-Also copies the repo-root .mcp.json to ~/.mcp.json.
+Also merges the repo-root .mcp.json's "mcpServers" into ~/.claude.json
+(user-level MCP config), backing up that file to ~/.claude.json.bak first.
+Requires jq.
 
 If the destination already contains files that would be overwritten,
 you will be shown what exists and prompted before continuing.
@@ -34,9 +36,10 @@ dest_claude="${HOME}/.claude"
 sync_dirs=("hooks" "skills")
 sync_files=("settings.json" "CLAUDE.md")
 
-# .mcp.json lives at the repo root (not in .claude/) and deploys to ~/.mcp.json.
+# .mcp.json lives at the repo root (not in .claude/). Its "mcpServers" key is
+# merged into ~/.claude.json, where Claude Code reads user-level MCP servers.
 mcp_source="${repo_dir}/.mcp.json"
-mcp_dest="${HOME}/.mcp.json"
+claude_json="${HOME}/.claude.json"
 
 # Warn about directories in repo .claude/ that won't be synced
 for entry in "${repo_claude}"/*/; do
@@ -70,9 +73,6 @@ for sync_file in "${sync_files[@]}"; do
     existing_files+=("${target}")
   fi
 done
-if [[ -f "${mcp_dest}" ]]; then
-  existing_files+=("${mcp_dest}")
-fi
 
 if [[ ${#existing_files[@]} -gt 0 ]]; then
   echo "The following files already exist in the destination:"
@@ -125,10 +125,24 @@ for sync_file in "${sync_files[@]}"; do
   echo "'${source}' -> '${dest_claude}/${sync_file}'"
 done
 
-# Copy the repo-root .mcp.json to ~/.mcp.json so MCP servers are available globally.
+# Merge MCP server definitions into ~/.claude.json (user-level config).
+#
+# User-scoped MCP servers live under the "mcpServers" key of ~/.claude.json, a
+# large stateful file managed by Claude Code. We must NOT overwrite it, so we
+# merge our declarative .mcp.json into it with jq — preserving every other key
+# and any servers already defined there. A timestamp-free .bak is written first.
 if [[ -f "${mcp_source}" ]]; then
-  cp "${mcp_source}" "${mcp_dest}"
-  echo "'${mcp_source}' -> '${mcp_dest}'"
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "WARNING: jq not found — skipping MCP sync into ${claude_json}."
+  else
+    [[ -f "${claude_json}" ]] || echo '{}' > "${claude_json}"
+    cp "${claude_json}" "${claude_json}.bak"
+    tmp="$(mktemp)"
+    jq --slurpfile mcp "${mcp_source}" \
+      '.mcpServers = ((.mcpServers // {}) + ($mcp[0].mcpServers // {}))' \
+      "${claude_json}" > "${tmp}" && mv "${tmp}" "${claude_json}"
+    echo "merged '${mcp_source}' mcpServers -> '${claude_json}' (backup: ${claude_json}.bak)"
+  fi
 fi
 
 echo ""
