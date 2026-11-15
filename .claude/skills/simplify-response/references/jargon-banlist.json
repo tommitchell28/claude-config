@@ -1,0 +1,104 @@
+{
+  "$comment": "Canonical jargon ban-list data. Single source of truth for every voice surface. The check-jargon hook reads autoMatched[].pattern (case-insensitive ERE) and greps prose against it. Human-readable companion: jargon-banlist.md.",
+  "autoMatched": [
+    {
+      "avoid": "load-bearing",
+      "prefer": "say what it carries, or \"critical\"",
+      "pattern": "load-bearing"
+    },
+    {
+      "avoid": "blast radius",
+      "prefer": "\"scope of impact\" / \"what this affects\"",
+      "pattern": "blast radius"
+    },
+    {
+      "avoid": "footgun",
+      "prefer": "\"easy to misuse\" / \"sharp edge\"",
+      "pattern": "footgun"
+    },
+    {
+      "avoid": "yak shaving",
+      "prefer": "\"prerequisite side-tasks\" / \"a rabbit hole\"",
+      "pattern": "yak.?shav"
+    },
+    {
+      "avoid": "belt-and-suspenders",
+      "prefer": "\"a redundant safeguard\" / \"two independent safeguards\"",
+      "pattern": "belt.and.suspenders"
+    },
+    {
+      "avoid": "smoking gun",
+      "prefer": "\"decisive evidence\" / \"the proof\"",
+      "pattern": "smoking gun"
+    },
+    { "avoid": "bespoke", "prefer": "\"custom\"", "pattern": "bespoke" },
+    {
+      "avoid": "fan out",
+      "prefer": "\"spread across parallel work\" / \"run in parallel\"",
+      "pattern": "fan.?out"
+    },
+    { "avoid": "clique", "prefer": "\"group\"", "pattern": "clique" },
+    {
+      "avoid": "substrate",
+      "prefer": "name the actual layer or store",
+      "pattern": "substrate"
+    },
+    {
+      "avoid": "X lives in Y",
+      "prefer": "\"X is in Y\" / \"X is defined in Y\"",
+      "pattern": "lives in"
+    },
+    {
+      "avoid": "surgical",
+      "prefer": "\"narrow\" / \"precise\" / \"a small change\"",
+      "pattern": "surgical"
+    },
+    {
+      "avoid": "first-class",
+      "prefer": "\"supported directly\" / \"built in\"",
+      "pattern": "first.class"
+    },
+    {
+      "avoid": "moat",
+      "prefer": "\"durable advantage\" / say what actually keeps competitors out",
+      "pattern": "moat"
+    },
+    {
+      "avoid": "superset / subset",
+      "prefer": "\"covers everything X does\" / \"sits inside X\"",
+      "pattern": "su(b|per)set"
+    },
+    {
+      "avoid": "collapses onto/into one",
+      "prefer": "\"reduces to\" / \"comes down to\"",
+      "pattern": "collaps\\w* (on|in)to (a |one )"
+    },
+    {
+      "avoid": "no-regret (move)",
+      "prefer": "\"worth doing regardless\" / \"low-risk either way\"",
+      "pattern": "no.?regret"
+    }
+  ],
+  "judgementCalls": [
+    {
+      "term": "spine / seams / gate",
+      "note": "Vague architectural metaphors. Name the real thing (the parser, the boundary between modules, the validation step). Fine when it's a literal identifier in the code."
+    },
+    {
+      "term": "invented acronyms on the fly",
+      "note": "Don't silently turn initialVerification into IV. Spell it out; coining an abbreviation pollutes the domain's own vocabulary."
+    },
+    {
+      "term": "undefined invented concepts",
+      "note": "If a fresh reader couldn't define the concept from the surrounding text, define it or cut it."
+    },
+    {
+      "term": "stacked metaphors",
+      "note": "The real tell isn't any one word, it's density: metaphors piled on invented nouns, shorthand written to yourself rather than to the reader."
+    },
+    {
+      "term": "sink (as a synonym for destination)",
+      "note": "\"where the ticket data sinks\" / \"sink unproven\" — say \"where the data lands\" / \"destination\". Fine as the literal term for a Flink/stream/event sink."
+    }
+  ]
+}
