@@ -6,6 +6,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(wc:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(**/*.tfstate)",
+      "Read(**/terraform.tfvars)"
     ]
   },
   "statusLine": {
@@ -23,6 +30,55 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-deployed-config-writes.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-jargon.sh"
+          }
+        ]
+      }
     ]
+  },
+  "model": "fable",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "xhigh"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5-5": {
+      "effortLevel": "high"
+    },
+    "claude-fable-5-2": {
+      "effortLevel": "medium"
+    }
+  },
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "voiceEnabled": true,
+  "remoteControlAtStartup": true,
+  "plansDirectory": "./.claude/plans",
+  "outputStyle": "plain-voice",
+  "skillOverrides": {
+    "code-review": "user-invocable-only"
   }
 }
