@@ -47,6 +47,8 @@ if (!shouldNotFoo()) { ... }
 
 - **Misplaced Responsibility**: Code that doesn't belong in its current location, violating SRP
 - **Lack of Consideration of Edge Cases**: Not handling special cases that might not be immediately obvious
+- **Implicit Not-Found Handling**: A lookup whose missing-record behaviour is undocumented, or that makes absent look the same as empty (see [error-handling.md](error-handling.md#not-found-contract))
+- **Masked Broken State**: Defensive defaults around a condition that should never occur, hiding the bug instead of failing
 
 ## Compliance and Overrides
 
@@ -57,7 +59,10 @@ if (!shouldNotFoo()) { ... }
 
 - **Needless/Obsolete Information**: Comments that no longer serve a purpose
 - **Poorly-Written**: Comments that confuse more than they clarify
+- **Narration and Journal Comments**: Comments that announce what the next line does or track change history
 - **Commented-Out Code**: Old code that's been commented out rather than removed
+
+See [comments.md](comments.md) for the full list of comments to delete.
 
 ## Environment
 
@@ -68,8 +73,8 @@ if (!shouldNotFoo()) { ... }
 
 - **Too Many Arguments**: Hard to understand and use
 - **Output Arguments**: Modify external variables, harder to reason about
-- **Boolean Arguments**: Make function behaviour less clear
-- **Unused Functions**: No longer called from anywhere -- delete them
+- **Boolean Arguments**: Make function behaviour less clear. Split the function; where the callee is not yours to split, name the literal at the call site (see [functions.md](functions.md#boolean-arguments))
+- **Unused Functions**: No longer called from anywhere -- delete them, along with unused classes and parameters (see [structure.md](structure.md))
 
 ## Surprise
 

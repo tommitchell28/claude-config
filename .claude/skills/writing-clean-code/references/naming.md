@@ -4,6 +4,7 @@
 
 - [General Rules](#general-rules)
 - [Naming Patterns](#naming-patterns)
+- [Tom's Review Standards](#toms-review-standards)
 
 ## General Rules
 
@@ -139,7 +140,7 @@ function calculateMortgage() { ... }
 
 ### Add Meaningful Context
 
-Names should live within a well-named class, function, or namespace to provide full meaning.
+Names should sit within a well-named class, function, or namespace to provide full meaning.
 
 ```javascript
 // Bad
@@ -167,6 +168,96 @@ function removeDuplicateProductIds(allProductIds) {
 function getUniqueElements(elements) {
   return [...new Set(elements)];
 }
+```
+
+### Collections and Items
+
+Use plural nouns for variables holding multiple items, singular nouns for a single item. The reader learns the cardinality from the name alone.
+
+```javascript
+// Collections - plural
+const newUsers = [];
+const activeAccounts = fetchActiveAccounts();
+
+// Single items - singular
+const newUser = createUser(data);
+const activeAccount = activeAccounts[0];
+
+// In loops, the element is singular
+for (const user of users) { ... }
+```
+
+### Lookup Maps and Dictionaries
+
+Name dictionary-style lookups `SingularNounByKey`. The suffix tells the reader that this is a lookup structure, what the key is, and what it contains.
+
+```javascript
+const userById = new Map(); // userById.get(userId)
+const accountByName = new Map(); // accountByName.get(accountName)
+
+const configByEnvironment = {
+  development: devConfig,
+  production: prodConfig,
+}; // configByEnvironment[environment]
+```
+
+### Avoid Generic Names
+
+Avoid names that carry no information beyond the type: `data`, `item`, `temp`, or a name that only echoes the class name or its plural. Add the context that distinguishes this value.
+
+```javascript
+// Bad - too generic
+const data = getUser(id);
+const items = getAllUsers();
+const temp = new Account();
+
+// Good - the name states which one and why
+const currentUser = getUser(id);
+const activeUsers = getAllUsers().filter((u) => u.isActive);
+const targetAccount = findAccount(criteria);
+```
+
+### Contextual Naming
+
+Add context to tell similar variables apart -- by purpose, by state, or by scope.
+
+```javascript
+// By purpose
+const sourceAccount = getAccount(sourceId);
+const targetAccount = getAccount(targetId);
+
+// By state
+const originalData = fetchData();
+const transformedData = transform(originalData);
+
+// By scope
+const globalConfig = loadGlobalConfig();
+const userConfig = loadUserConfig(userId);
+const mergedConfig = merge(globalConfig, userConfig);
+```
+
+### Abbreviations
+
+Only common, universally understood abbreviations are acceptable -- they read as words in their own right:
+
+```javascript
+const id = record.id;
+const url = "https://...";
+const idx = 0; // index
+const config = loadConfig(); // configuration
+const params = getParams(); // parameters
+const res = await fetch(url); // response
+```
+
+Avoid the ones that save a few characters at the cost of clarity:
+
+```javascript
+const usr = getUser(id); // use: user
+const acct = getAccount(id); // use: account
+const amt = 100; // use: amount
+const qty = 5; // use: quantity
+const dt = new Date(); // use: date
+const val = getValue(); // use: value
 ```
 
 ## Naming Patterns
@@ -245,3 +336,28 @@ enum Outcome {
     ERROR
 }
 ```
+
+### Files
+
+Follow the project's existing convention. Where none exists:
+
+| Language   | Convention            | Example               |
+| ---------- | --------------------- | --------------------- |
+| TypeScript | camelCase             | `userService.ts`      |
+| Test files | Match source + suffix | `userService.test.ts` |
+
+## Tom's Review Standards
+
+Naming and readability. Each standard keeps the shape Standard / Why / Example (the example is optional).
+
+### Intention-revealing names
+
+**Standard:** Name things for what they actually are, and rename when a name is vague or stale -- including purging dead terminology from every mention. **Why:** Names are the primary documentation; a name implying the wrong thing misleads every future reader. **Example:** `getMostRecentNavState`, not a position-based name, when the selection is by time.
+
+### No bare literal arguments
+
+**Standard:** Assign literal arguments to a named variable, or extract a well-named method, instead of passing bare booleans and magic values. **Why:** `someCall(false)` forces the reader to open the callee to learn what it means. **Example:** `const isDryRun = false;`
+
+### Match the established convention
+
+**Standard:** Use the naming convention already established in the module rather than introducing a second style alongside it. **Why:** A mixed convention forces every future reader and author to guess which applies.

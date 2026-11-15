@@ -70,7 +70,25 @@ Small in responsibilities, not just lines of code.
 
 The name should clearly indicate responsibilities. Avoid vague names like `Manager` or `Processor`.
 
-Rule of thumb: describe a class in about 25 words without using `if`, `and`, `or`, or `but`.
+Rule of thumb: describe a class in about 25 words without using `and`, `or`, or `but`. A description that needs a conjunction is describing several classes.
+
+```typescript
+// Bad - "creates users and sends email and generates reports and validates passwords"
+class UserManager {
+  createUser() { ... }
+  sendEmail() { ... }
+  generateReport() { ... }
+  validatePassword() { ... }
+}
+
+// Good - each class is described without a conjunction
+class UserRepository {
+  create(user: User) { ... }
+  delete(id: string) { ... }
+}
+class EmailService { send(to: string, template: string) { ... } }
+class PasswordValidator { validate(password: string): boolean { ... } }
+```
 
 ### Single Responsibility Principle (SRP)
 
@@ -93,15 +111,64 @@ Benefits:
 - Decoupling: swap implementations seamlessly
 - Testability: mock dependencies easily
 
+```typescript
+// Bad - the service is tied to one concrete database
+class OrderService {
+  private mysqlDatabase = new MySQLDatabase();
+  save(order: Order) {
+    this.mysqlDatabase.insert(order);
+  }
+}
+
+// Good - both sides depend on the interface
+interface Database {
+  insert(data: unknown): void;
+}
+class OrderService {
+  constructor(private database: Database) {}
+  save(order: Order) {
+    this.database.insert(order);
+  }
+}
+const service = new OrderService(new MySQLDatabase());
+const testService = new OrderService(new InMemoryDatabase());
+```
+
 ## System Design Rules
 
 ### Separate Construction from Use
 
 Separate startup (object construction, dependency wiring) from runtime logic:
 
-1. Move all construction to `main`
+1. Move all construction to `main` (or a factory, or a container)
 2. Design the application assuming dependencies are wired up
 3. Have `main` pass all dependencies to the application
+
+```typescript
+// Bad - construction mixed into the logic
+class Application {
+  run() {
+    const config = new Config();
+    const database = new Database(config.dbUrl);
+    const service = new UserService(database);
+    service.createUser(userData);
+  }
+}
+
+// Good - construction at the entry point
+// main.ts
+const database = new Database(new Config().dbUrl);
+const app = new Application(new UserService(database));
+app.run();
+
+// Application.ts
+class Application {
+  constructor(private userService: UserService) {}
+  run() {
+    this.userService.createUser(userData);
+  }
+}
+```
 
 ### Abstract Factory Pattern
 
@@ -142,38 +209,34 @@ public class Application {
 
 ### Dependency Injection
 
-Delegate object creation rather than constructing directly. Achieves Inversion of Control (IoC).
+Pass dependencies into a class rather than constructing them inside it. This is the practical mechanism behind the Dependency Inversion Principle and achieves Inversion of Control (IoC).
+
+Benefits:
+
+- Loose coupling: the class does not know which concrete collaborator it has
+- Easy testing: inject mocks or in-memory implementations
+- Flexible configuration: swap implementations at the entry point without touching the class
 
 ```typescript
-// Bad - no DI, tightly coupled
-class App {
-  run() {
-    console.log("App is running");
-  }
+// Bad - constructs its own collaborators
+class ReportGenerator {
+  private logger = new FileLogger();
+  private dataSource = new DatabaseConnection();
+  generate() { ... }
 }
 
-// Good - DI via constructor
+// Good - collaborators injected through the constructor
 interface Logger {
   log(message: string): void;
 }
 
-class ConsoleLogger implements Logger {
-  log(message: string) {
-    console.log(message);
-  }
+class ReportGenerator {
+  constructor(private logger: Logger, private dataSource: DataSource) {}
+  generate() { ... }
 }
 
-class App {
-  private logger: Logger;
-
-  constructor(logger: Logger) {
-    this.logger = logger;
-  }
-
-  run() {
-    this.logger.log("App is running");
-  }
-}
+const generator = new ReportGenerator(new FileLogger(), new DatabaseConnection());
+const testGenerator = new ReportGenerator(new MockLogger(), new MockDataSource());
 ```
 
 ## Boundaries
