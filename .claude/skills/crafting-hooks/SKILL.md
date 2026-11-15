@@ -14,6 +14,16 @@ This skill guides the full lifecycle of Claude Code hooks — event-driven
 automations configured in settings.json. It covers creation, review, debugging,
 and modification.
 
+## Read the Official Reference First
+
+Hook event names, payload fields and handler types change between Claude Code
+releases. Fetch <https://code.claude.com/docs/en/hooks.md> **before** naming an
+event, quoting a payload field, writing a handler or diagnosing a hook that does
+not fire. The bundled files under `references/` are a starting point that can be
+out of date; where they disagree with the fetched page, the page wins. If the
+fetch fails, or lands on something that is not the hooks reference, say so
+rather than answering from memory as if it were current.
+
 ## Mode Detection
 
 Determine which mode to use based on user input and `$ARGUMENTS`:
@@ -287,4 +297,5 @@ These rules apply across all modes:
 5. **Test matchers mentally**: Before writing a matcher, ask: "Would this regex match X? Would it also match Y that we DON'T want?"
 6. **Check for infinite loops**: Any hook that can trigger its own event is a potential loop. Add guards.
 7. **Remind about sync**: If the user has `setup.sh` or a similar sync script, remind them to run it after changes.
-8. **Consult references**: When unsure about an event's schema, matchers, or decision format, check [references/event-schema-reference.md](references/event-schema-reference.md). When looking for examples, check [references/hook-recipes.md](references/hook-recipes.md). When reviewing for issues, check [references/anti-patterns.md](references/anti-patterns.md).
+8. **Fetch the official reference first**: Before naming an event, quoting a payload field, writing a handler or diagnosing a hook that does not fire, fetch <https://code.claude.com/docs/en/hooks.md>. The bundled reference files can be out of date. If the fetch fails, say so.
+9. **Consult references**: When unsure about an event's schema, matchers, or decision format, check [references/event-schema-reference.md](references/event-schema-reference.md). When looking for examples, check [references/hook-recipes.md](references/hook-recipes.md). When reviewing for issues, check [references/anti-patterns.md](references/anti-patterns.md).
