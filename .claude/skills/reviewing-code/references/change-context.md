@@ -27,8 +27,8 @@ git fetch origin "$BASE_BRANCH" "$HEAD_BRANCH"                        # fetched 
 - Both write the same file shape.
 - The range path diffs exactly `merge-base(base,head)..head` and ignores the working tree.
 - Read the printed `MODE`, `BASE`, `HEAD`, `FILE_COUNT` and the name-status; `FILE_COUNT=0` means nothing to work on.
-- `--exclude <pathspec>` (repeatable) drops matching paths from the change — the way to honour "that file isn't part of this" when the user says so.
-- `BASE_IS_LOCAL=yes` means the detected base is not a remote-tracking ref and may be stale (the file's metadata carries the same warning); suggest `git fetch` in that case.
+- `--exclude <pathspec>` (repeatable) drops matching paths from the change — the way to honour "that file isn't part of this" when the user says so, or when an `unattended` run drops obvious non-review files.
+- `BASE_IS_LOCAL=yes` means the detected base is not a remote-tracking ref and may be stale (the file's metadata carries the same warning); suggest `git fetch` in that case (an `unattended` run records it as an audit warning instead).
 - Untracked files in the context file's own directory are never counted as part of the change, so earlier context files, shards and reports stay out of the diff.
 
 ## `requirements-context.sh` — the Pull Request and Issue
@@ -41,7 +41,7 @@ git fetch origin "$BASE_BRANCH" "$HEAD_BRANCH"                        # fetched 
 - `detect` finds the open pull request for the current branch, then its linked issue: the PR's closing references first, else the first `Closes`/`Fixes`/`Resolves`/`Refs #N` in the PR body.
 - An issue in another repository comes back as its URL; `--issue` takes a number or a URL.
 - `append` adds a `## Requirements context` section holding each title, URL and body, all quoted; an empty `--pr` or `--issue` value is ignored.
-- Confirm what `detect` found with the user before running `append`.
+- Confirm what `detect` found with the user before running `append`; an `unattended` run accepts it without asking.
 - When `gh` is missing or not logged in, the repository has no remote, or nothing is found, the script prints `REQ_STATUS=SKIP: <reason>` and exits 0.
 
 ## `shard-context.sh` — Slice One Context Into Per-File Shards

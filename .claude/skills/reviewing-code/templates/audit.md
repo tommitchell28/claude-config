@@ -17,23 +17,24 @@ Audit template. Written alongside the report at RUN_DIR/review/audit.md (the AUD
 | -------------- | ---------------------------------------------------------------------------------- |
 | Tier           | `<lite \| standard \| deep>`                                                       |
 | Verify         | `<on \| off (lite) \| off (no-verify)>`                                            |
+| Unattended     | `<no \| yes — both confirmation stops skipped; nobody confirmed target or lenses>` |
 | Agents         | `<lite: 2 bundles \| standard/deep: 1 per lens; N total>`                          |
 | Per-agent read | `<lenses: header shard + all file shards; verifiers: header shard + 1 file shard>` |
 | Shard dir      | `<SHARD_DIR path; N per-file shards>`                                              |
 
 ## Execution summary
 
-| Step                 | Status                | Details                                                                          |
-| -------------------- | --------------------- | -------------------------------------------------------------------------------- |
-| Resolve paths        | `<PASS/FAIL>`         | `<report-paths.sh output>`                                                       |
-| Resolve changes      | `<PASS/FAIL>`         | `<mode; N files>`                                                                |
-| Target gate          | `<PASS>`              | `<proceeded as detected \| base changed \| range \| PR/issue corrected/skipped>` |
-| Requirements context | `<PASS/SKIP/FAIL>`    | `<PR and issue numbers, or reason for skip>`                                     |
-| Discovery            | `<PASS/FAIL>`         | `<N standards found; requirements: given/inferred>`                              |
-| Lens confirmation    | `<PASS>`              | `<lenses confirmed; any REQUIRED lens dropped>`                                  |
-| Shard + launch       | `<PASS/PARTIAL/FAIL>` | `<N shards; M agents ran; any that errored>`                                     |
-| Verification         | `<PASS/SKIP>`         | `<N in → M upheld (+ deep second-opinion); or reason skipped>`                   |
-| Report + audit       | `<PASS/FAIL>`         | `<report path>`                                                                  |
+| Step                 | Status                | Details                                                                                                                                                         |
+| -------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resolve paths        | `<PASS/FAIL>`         | `<report-paths.sh output>`                                                                                                                                      |
+| Resolve changes      | `<PASS/FAIL>`         | `<mode; N files>`                                                                                                                                               |
+| Target gate          | `<PASS>`              | `<proceeded as detected \| base changed \| range \| PR/issue corrected/skipped \| unattended: accepted without asking — mode, base, PR, issue; files excluded>` |
+| Requirements context | `<PASS/SKIP/FAIL>`    | `<PR and issue numbers, or reason for skip>`                                                                                                                    |
+| Discovery            | `<PASS/FAIL>`         | `<N standards found; requirements: given/inferred>`                                                                                                             |
+| Lens confirmation    | `<PASS>`              | `<lenses confirmed; any REQUIRED lens dropped \| unattended: lenses run without asking>`                                                                        |
+| Shard + launch       | `<PASS/PARTIAL/FAIL>` | `<N shards; M agents ran; any that errored>`                                                                                                                    |
+| Verification         | `<PASS/SKIP>`         | `<N in → M upheld (+ deep second-opinion); or reason skipped>`                                                                                                  |
+| Report + audit       | `<PASS/FAIL>`         | `<report path>`                                                                                                                                                 |
 
 ## Review target
 
@@ -85,7 +86,7 @@ A changed file no lens examined is recorded as `not examined` — the coverage g
 ## Warnings and errors
 
 <!-- List anything degraded: a REQUIRED lens the user dropped (with the cost), a changed file no
-lens examined, the pull request or issue unreachable, a lens agent that errored, a standard skill not available, scratch
+lens examined, an unattended run on a local-ref base (may be stale), the pull request or issue unreachable, a lens agent that errored, a standard skill not available, scratch
 files excluded, an untracked file skipped. "None." if clean. -->
 
 | Type              | Context  | Message     |

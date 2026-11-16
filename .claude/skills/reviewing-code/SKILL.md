@@ -1,7 +1,7 @@
 ---
 name: reviewing-code
-description: Tom's standard code review — a multi-lens review of the current change. Use for every code review request — "review this", "code review", "review my branch", "review my changes", "review this PR", "can you review" — or when invoked as /reviewing-code [lite|standard|deep] [no-verify]. Check out the branch and run it bare — a target-confirm gate shows what will be reviewed before any expensive work runs. Resolves the branch diff, and the GitHub pull request and linked issue when they exist, into one shared snapshot; discovers the repo's own standards and the change's requirements; runs one isolated sub-agent per review lens (correctness, clean-code, security, and — when the change calls for them — contracts, requirements, test-quality, design), each self-discovering the skills that fit; refutes each finding before it survives; and writes a severity-ranked report + audit trail under .claude/code-reviews/. Replaces the built-in /code-review.
-argument-hint: "[lite|standard|deep] [no-verify]"
+description: Tom's standard code review — a multi-lens review of the current change. Use for every code review request — "review this", "code review", "review my branch", "review my changes", "review this PR", "can you review" — or when invoked as /reviewing-code [lite|standard|deep] [no-verify] [unattended]. By default it stops twice for the user — to confirm the review target, then the lens set. Pass `unattended` only when no human is waiting (an autonomous pipeline) — both stops are skipped, and an empty diff, dirty tree or non-branch target ends the run with a named reason. Resolves the branch diff, plus the pull request and linked issue when they exist, into one snapshot; discovers the repo's standards and the change's requirements; runs one isolated sub-agent per lens (correctness, clean-code, security, plus contracts, requirements, test-quality, design when relevant); refutes each finding; writes a severity-ranked report + audit trail under .claude/code-reviews/. Replaces the built-in /code-review.
+argument-hint: "[lite|standard|deep] [no-verify] [unattended]"
 compatibility: Requires bash and git — macOS or Linux (WSL on Windows). The optional requirements step uses the GitHub CLI (gh).
 ---
 
@@ -11,10 +11,11 @@ A multi-lens code-review **orchestrator**. You (the driving agent) run this work
 
 **Common flow: check out the branch you want reviewed and run this bare.** It auto-detects the change, and the branch's GitHub pull request and linked issue when they exist, then shows you all of it at a confirm gate before spending anything. Arguments are optional accelerators, not something to memorise.
 
-**Arguments:** `$ARGUMENTS` (order-independent, both optional):
+**Arguments:** `$ARGUMENTS` (order-independent, all optional):
 
 - **Tier** — `lite` | `standard` | `deep`, default `standard`. Trades thoroughness for cost (see the tier table in Step 6).
 - **`no-verify`** — skip the verification pass (Step 7). `lite` is already unverified; this only bites `standard`/`deep`.
+- **`unattended`** — for a caller with no human waiting, such as an autonomous pipeline. Skips both confirmation stops (Step 2 and Step 5) and never calls AskUserQuestion; an unsafe target ends the run with a named reason instead. Without it, both stops always run. In an `unattended` run, wherever a later step says _confirmed_ (pull request, issue, lenses, context), read it as what Step 2 or Step 5 accepted.
 
 ## Principles
 
@@ -25,12 +26,12 @@ A multi-lens code-review **orchestrator**. You (the driving agent) run this work
 - **Resolve once, share to all.** The diff, the requirements context (pull request and issue text), and discovery land in a single **review-context file**. Every lens reads that file (or its per-file shards); none re-runs git, re-fetches the pull request or issue, or re-runs discovery. This keeps the review cheap, consistent (all lenses judge an identical snapshot), and reproducible (the audit records the exact input).
 - **Scripts do the mechanical work; you orchestrate and judge.** The diff (`get-changes.sh`), the per-file shards (`shard-context.sh`), the pull request and issue lookup (`requirements-context.sh`) and the output paths (`report-paths.sh`) all come from this skill's `scripts/` directory; [references/change-context.md](references/change-context.md) documents them. Never hand-roll them.
 - **Keep the diff out of your own context.** `get-changes.sh` writes the full diff to the context file and prints only a compact summary to you. Work from the name-status summary; let the lens sub-agents read the diff.
-- **Nothing expensive runs against the wrong target.** A cheap target-confirm gate (Step 2) comes before the requirements fetch, discovery, and the lens launch. Confirm the change and the pull request or issue once, up front; correct either before any sub-agent spends a token.
+- **Nothing expensive runs against the wrong target.** A cheap target-confirm gate (Step 2) comes before the requirements fetch, discovery, and the lens launch. Confirm (or, with `unattended`, check) the change and the pull request or issue once, up front; correct either before any sub-agent spends a token.
 - **Scale to the change.** A three-line diff doesn't need six lenses and a verification pass. Propose a set that fits, pick a tier that fits, and say so.
 
 ## Step 1 — Parse arguments, resolve paths, write the context file
 
-Parse the arguments first: read the tier (`lite`/`standard`/`deep`, default `standard`) and whether `no-verify` was passed. Anything else is an error — say so and stop.
+Parse the arguments first: read the tier (`lite`/`standard`/`deep`, default `standard`), whether `no-verify` was passed, and whether `unattended` was passed. Anything else is an error — say so and stop.
 
 This skill's own files (scripts, templates, references) resolve from its directory: Claude Code substitutes `${CLAUDE_SKILL_DIR}` in skill text when it loads, so the paths below read as absolute. If the variable ever shows unexpanded, use the base directory Claude Code reports when the skill loads — never search the filesystem for the scripts. Run this as one block from the reviewed repo's root:
 
@@ -61,13 +62,13 @@ printf 'REVIEW_DIR=%s\nCONTEXT_SCRIPTS=%s\nSTARTED=%s\n' "$REVIEW_DIR" "$CONTEXT
 
 Note the printed `REVIEW_DIR`, `CONTEXT_SCRIPTS`, `PR_NUMBER`, `ISSUE_REF`, `REQ_STATUS`, `CONTEXT_FILE`, `REPORT`, `AUDIT`, `STARTED`, `MODE`, `BASE`, `BASE_IS_LOCAL`, `MERGE_BASE`, `HEAD`, `DIRTY`, `FILE_COUNT`, and the name-status list — you'll use these below (the audit's target and timing tables come from them; note the time again before writing outputs). `get-changes.sh` auto-selects the target (`MODE`: `branch` vs the base branch, `working-tree` for uncommitted work, `last-commit`, `initial-commit`, or `unborn-branch`; `range` when you pass `--range`).
 
-**If `FILE_COUNT=0`:** there is nothing to review. Tell the user (naming the mode it tried) and stop — no report.
+**If `FILE_COUNT=0`:** there is nothing to review. Without `unattended`, tell the user (naming the mode it tried) and stop — no report. With `unattended`, do not stop here: go to Step 2, which fails the run and names this alongside any other failed condition.
 
-**Scan the name-status for non-review artifacts** — scratch notes, generated output, lockfiles, vendored code, and any untracked file that looks like local secrets. If any appear (common in `working-tree` mode), name them and offer to exclude them at the confirm gate (`get-changes.sh` takes `--exclude <pathspec>`, repeatable); a lens shouldn't burn a pass on `TODO.md`, and a stray key file should never reach a sub-agent.
+**Scan the name-status for non-review artifacts** — scratch notes, generated output, lockfiles, vendored code, and any untracked file that looks like local secrets. If any appear (common in `working-tree` mode), name them and offer to exclude them at the confirm gate (`get-changes.sh` takes `--exclude <pathspec>`, repeatable); a lens shouldn't burn a pass on `TODO.md`, and a stray key file should never reach a sub-agent. In an `unattended` run, do not offer: Step 2 excludes them itself.
 
 ## Step 2 — Confirm the target (cheap gate, before anything expensive)
 
-Everything after this point spends tokens — the requirements fetch, discovery, the lens launch. This gate is the one chance to catch a wrong target for the price of a local `git diff`. Run it always.
+Everything after this point spends tokens — the requirements fetch, discovery, the lens launch. This gate is the one chance to catch a wrong target for the price of a local `git diff`. Run it always — unless `unattended` was passed: then skip the rest of this section and follow **Step 2 when `unattended` was passed** below.
 
 Use the `PR_NUMBER`, `ISSUE_REF` and `REQ_STATUS` that Step 1 printed; confirm them here before fetching anything.
 
@@ -81,6 +82,27 @@ Then, via **AskUserQuestion**, let the user steer before any spend:
 - **Correct or skip the requirements source** — supply the right pull request or issue number (an issue in another repository as its URL), or drop either (no pull request and no issue → no `requirements-alignment` lens later unless discovery finds requirements elsewhere).
 
 Carry the confirmed pull request and issue and the confirmed context forward. Record the gate's outcome for the audit.
+
+### Step 2 when `unattended` was passed
+
+Do not present the gate and do not call AskUserQuestion. Check the target yourself, from what Step 1 printed.
+
+**Fail the run** when any of these holds:
+
+| Condition                              | Reason to report                                         |
+| -------------------------------------- | -------------------------------------------------------- |
+| `FILE_COUNT=0`                         | no changed files (name the `MODE` and `BASE` it tried)   |
+| `DIRTY=yes`                            | the working tree has uncommitted changes                 |
+| `MODE` is anything other than `branch` | the detected mode is `<MODE>`, not a branch against base |
+
+On failure: launch no sub-agent, write no report and no audit, and return one message to the caller that starts `UNATTENDED REVIEW NOT RUN:` and names every condition that failed. The run directory and `context.md` that Step 1 created stay on disk; name `RUN_DIR` in the message. Never ask a question and never proceed on a doubtful target — a review of the wrong diff can pass unnoticed.
+
+**Otherwise, accept the target without asking:**
+
+- Accept the detected `MODE`, `BASE` and `HEAD`, and the detected `PR_NUMBER` and `ISSUE_REF` (either may be empty).
+- `BASE_IS_LOCAL=yes` is not a failure: carry on, and record a warning in the audit that the base is a local ref and may be stale.
+- Exclude the obvious non-review files that the Step 1 scan found — lockfiles, generated output, vendored code, scratch notes, anything that looks like secrets — by re-running `"$CONTEXT_SCRIPTS/get-changes.sh" "$CONTEXT" --exclude .claude/code-reviews --exclude <pathspec>` once, with one `--exclude` per file. If that leaves `FILE_COUNT=0`, fail as above. A secrets-looking file here is committed on the branch: record it as an audit `WARNING`, and name it in the report's **Coverage** note and the Step 9 message as excluded and needing a human check.
+- Record for the audit: that the run was unattended, the target accepted, the pull request and issue accepted, and each file excluded with why.
 
 ## Step 3 — Fetch the requirements context (optional)
 
@@ -124,9 +146,11 @@ Keep the set small and high-level (see Principles); tag each proposed lens **req
 
 `deep` tier promotes every optional lens to run regardless of the change (Step 6).
 
-**Present the proposed set to the user and confirm before launching** (AskUserQuestion). Recommend running all proposed; let them drop or add lenses. This confirmation is required — never skip straight to the launch.
+**Present the proposed set to the user and confirm before launching** (AskUserQuestion). Recommend running all proposed; let them drop or add lenses. This confirmation is required unless `unattended` was passed (see the last paragraph of this step) — otherwise never skip straight to the launch.
 
 **Dropping a _required_ lens is a coverage gap, not a silent choice.** If the user drops `correctness`, `clean-code`, `security`, or a required `test-quality`, honour the choice but record the gap — you'll surface it in the report's **Coverage** note (Step 8) and the audit warnings, naming what went unexamined (e.g. "test-quality not run — 3 new source files landed untested"). Compute the "untested source files" count from the name-status: added/modified non-test source files with no test file changed alongside.
+
+**When `unattended` was passed:** do not ask. Run every required lens plus every optional lens the table recommends for this change (`test-quality`, when not required, counts as recommended if the diff touches test files; `deep` still promotes all of them). Record the lens set, and that nobody confirmed it, for the audit.
 
 ## Step 6 — Shard the context, then launch the lenses
 
@@ -244,18 +268,20 @@ Record every finding's outcome (upheld / dropped + why, and any second-opinion r
    - Take the union of every lens's `EXAMINED` list — that's what was actually scrutinised, and which lens examined each file.
    - Cross it against the name-status: any changed (non-deleted) file that **no** lens examined is listed as **not individually examined**, not implied to be reviewed.
    - The "examined by" column reflects the real `EXAMINED` union.
-4. Read `<REVIEW_DIR>/templates/report.md` and write the filled report to `REPORT`. Include the Requirements context section only if Step 3 appended one. Fill the **Coverage** note: any required lens the user dropped (Step 5), and any changed file no lens examined. If nothing survived, use the no-issues variant.
-5. Read `<REVIEW_DIR>/templates/audit.md` and write the filled audit to `AUDIT`: every step's PASS/SKIP/FAIL, the target gate's outcome, the **tier** and per-agent read scope, discovery result, lenses run (and any required lens dropped), the skills each lens reported loading, verify outcomes, files examined vs unexamined, warnings, and approximate timing from `STARTED` and the times you noted.
+4. Read `<REVIEW_DIR>/templates/report.md` and write the filled report to `REPORT`. Include the Requirements context section only if Step 3 appended one. Fill the **Coverage** note: any required lens the user dropped (Step 5), any file an `unattended` run excluded (Step 2), and any changed file no lens examined. If nothing survived, use the no-issues variant.
+5. Read `<REVIEW_DIR>/templates/audit.md` and write the filled audit to `AUDIT`: every step's PASS/SKIP/FAIL, the target gate's outcome, whether the run was `unattended` (and, if so, what was accepted without asking at Step 2 and Step 5), the **tier** and per-agent read scope, discovery result, lenses run (and any required lens dropped), the skills each lens reported loading, verify outcomes, files examined vs unexamined, warnings, and approximate timing from `STARTED` and the times you noted.
 
 Do not pull the full diff into your context to do this — you have the name-status summary, the lens findings, and the `EXAMINED`/`SKILLS` lists.
 
 ## Step 9 — Report completion
 
-Show the user, tersely: the `REPORT` and `AUDIT` paths, the tier run, and the severity counts (BLOCKER / CRITICAL / NORMAL). Lead with the outcome. If a required lens was dropped or a file went unexamined, say so in one line (the report has the detail). If a lens or the requirements fetch failed, say so. Don't restate the findings — they're in the report.
+Show the user (in an `unattended` run, return to the caller), tersely: the `REPORT` and `AUDIT` paths, the tier run, and the severity counts (BLOCKER / CRITICAL / NORMAL). For an `unattended` run, say so in one line, with any file it excluded. Lead with the outcome. If a required lens was dropped or a file went unexamined, say so in one line (the report has the detail). If a lens or the requirements fetch failed, say so. Don't restate the findings — they're in the report.
 
 ## Guardrails
 
-- **Confirm the target, then the lenses.** Two gates: the cheap target-confirm (Step 2) before any spend, the lens confirm (Step 5) before the launch. Both are the user's to drive; never skip either.
+- **Confirm the target, then the lenses.** Two gates: the cheap target-confirm (Step 2) before any spend, the lens confirm (Step 5) before the launch. Both are the user's to drive and both are mandatory unless `unattended` was passed; never skip either on your own judgement, and never infer `unattended` from the context — it applies only when the argument is present.
+- **No way to ask is not `unattended`.** If `unattended` was not passed and AskUserQuestion is unavailable (e.g. inside a sub-agent), do not proceed on your own judgement: stop before any spend and return `REVIEW NOT RUN: confirmation needed — re-run with unattended to skip both stops`.
+- **`unattended` never asks and never guesses.** It accepts a safe target, or ends the run with a named reason. It does not fall back to AskUserQuestion, and it does not review a dirty tree, an empty diff, or a mode other than `branch`.
 - **Every agent reads the shards; none re-derives the change.** If you catch yourself about to hand an agent `git diff` or a pull request number to look up, stop — point it at the header + file shards.
 - **Discovery is repo-agnostic.** Name only categories of places to look; let the Explore agent surface what a repo actually has. Never hardcode one repo's specific standards here.
 - **`CONTEXT` is the one plain-language field.** Everything else in a finding stays terse; the report renders `CONTEXT` as prose for a reader who doesn't know the code.
