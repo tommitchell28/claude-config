@@ -9,9 +9,18 @@ Usage: setup.sh [--dry-run] [-h|--help]
 Copies hooks/, skills/, rules/, output-styles/ and agents/ plus settings.json
 and CLAUDE.md from this repo's .claude/ directory to ~/.claude/.
 
+Also fetches the third-party skills named in third-party-skills.json (see
+scripts/fetch-third-party-skills.sh --help) and deploys each source as a
+plugin under ~/.claude/skills/<plugin>/, so its skills are listed as
+<plugin>:<skill>. The latest upstream commit is fetched on every run, dry runs
+included; the fetch writes only to the gitignored .third-party/ in this repo.
+The upstream commit and the files that differ from the deployed copies are
+printed before anything is written. If the fetch fails, the rest of the config
+is deployed and the third-party skills already in ~/.claude/ are left alone.
+
 Nothing in ~/.claude/ is ever deleted. Files under those directories that are
-no longer in the repo are reported so you can remove them by hand;
-~/.claude/skills/synced/ belongs to Claude Code and is never reported.
+no longer in the repo or the manifest are reported so you can remove them by
+hand; ~/.claude/skills/synced/ belongs to Claude Code and is never reported.
 
 For settings.json and CLAUDE.md a diff between the deployed copy and the copy
 about to be written is printed first, so changes made on the machine (through
@@ -19,17 +28,21 @@ about to be written is printed first, so changes made on the machine (through
 
 Also merges the repo-root .mcp.json's "mcpServers" into ~/.claude.json
 (user-level MCP config), backing up that file to ~/.claude.json.bak first.
-Requires rsync; the MCP merge requires jq.
+Requires rsync; the MCP merge requires jq; third-party skills require git,
+jq and perl.
 
 Stops before writing anything if a destination path clashes with the repo
-layout (a file or symlink where the repo has a directory, or the reverse).
+layout (a file or symlink where the repo has a directory, or the reverse), or
+if third-party-skills.json is invalid (for example a plugin name that matches
+a directory in .claude/skills/).
 
 Warns if the repo's .claude/ contains directories not in the sync list
 (plans/ and code-reviews/ are known repo-only directories).
 
 Options:
-  --dry-run    Change nothing. Show what would be copied, the diffs, the
-               orphan report and what the MCP merge would do.
+  --dry-run    Change nothing in ~/.claude/. Show what would be copied, the
+               diffs, the third-party skill changes, the orphan report and
+               what the MCP merge would do.
   -h, --help   Show this help.
 
 A real run asks for confirmation before it writes anything.
@@ -71,6 +84,18 @@ repo_only_dirs=("plans" "code-reviews")
 # merged into ~/.claude.json, where Claude Code reads user-level MCP servers.
 mcp_source="${repo_dir}/.mcp.json"
 claude_json="${HOME}/.claude.json"
+
+third_party_manifest="${repo_dir}/third-party-skills.json"
+third_party_fetch="${repo_dir}/scripts/fetch-third-party-skills.sh"
+third_party_skills="${repo_dir}/.third-party/skills"
+# Keep in step with EXIT_INVALID_MANIFEST in scripts/fetch-third-party-skills.sh.
+invalid_manifest_exit_code=65
+# The staged copy is rebuilt on every run, so its timestamps always differ from
+# the deployed copy; only a content comparison shows what upstream changed.
+third_party_rsync_options=(--recursive --perms --checksum --itemize-changes)
+# absent: there is no manifest. ready: fetched and staged for deploy.
+# failed: the fetch failed, so deployed third-party skills are left alone.
+third_party_state="absent"
 
 work_dir="$(mktemp -d)"
 trap 'rm -rf "${work_dir}"' EXIT
@@ -128,6 +153,50 @@ show_file_diffs() {
   done
 }
 
+fetch_third_party_skills() {
+  [[ -f "${third_party_manifest}" ]] || return 0
+  echo "--- Third-party skills: fetching the sources in ${third_party_manifest}"
+  local exit_code=0
+  "${third_party_fetch}" || exit_code=$?
+  if [[ "${exit_code}" -eq "${invalid_manifest_exit_code}" ]]; then
+    echo "Fix ${third_party_manifest} and run again. Nothing was changed." >&2
+    exit 1
+  fi
+  if [[ "${exit_code}" -eq 0 ]]; then
+    third_party_state="ready"
+  else
+    third_party_state="failed"
+    echo "WARNING: third-party skills were not fetched — skipping them." \
+      "Those already in ${dest_claude}/skills/ are left as they are."
+  fi
+  echo ""
+}
+
+show_third_party_changes() {
+  [[ "${third_party_state}" == "ready" ]] || return 0
+  local target="${dest_claude}/skills"
+  echo "--- Third-party skill files that differ from ${target}/"
+  if [[ ! -d "${target}" ]]; then
+    echo "  (destination does not exist; every file below would be created)"
+    (cd "${third_party_skills}" && find . -type f | sort | sed 's|^\./|  |')
+  else
+    local changes
+    changes="$(rsync "${third_party_rsync_options[@]}" --dry-run \
+      "${third_party_skills}/" "${target}/")"
+    echo "${changes:-  (no differences)}"
+  fi
+  echo ""
+}
+
+copy_third_party_skills() {
+  [[ "${third_party_state}" == "ready" ]] || return 0
+  local target="${dest_claude}/skills"
+  echo "--- third-party skills -> ${target}/"
+  mkdir -p "${target}"
+  rsync "${third_party_rsync_options[@]}" "${third_party_skills}/" "${target}/"
+  echo ""
+}
+
 # rsync never gets --delete here: the destination holds content this repo does
 # not own (skills/synced/ is managed by Claude Code).
 copy_dirs() {
@@ -161,23 +230,40 @@ copy_files() {
   echo ""
 }
 
+list_deployed_plugin_names() {
+  local plugin_manifest
+  for plugin_manifest in "${dest_claude}"/skills/*/.claude-plugin/plugin.json; do
+    [[ -f "${plugin_manifest}" ]] || continue
+    basename "$(dirname "$(dirname "${plugin_manifest}")")"
+  done
+}
+
 report_orphans() {
   echo "--- Files under ${dest_claude} that are no longer in this repo"
   echo "    (reported only; nothing is deleted)"
-  local found=false sync_dir source target path
-  local -a orphan_options
+  local found=false sync_dir source target path plugin_name
+  local -a orphan_options orphan_sources
   for sync_dir in "${sync_dirs[@]}"; do
     source="${repo_claude}/${sync_dir}"
     target="${dest_claude}/${sync_dir}"
     [[ -d "${source}" && -d "${target}" ]] || continue
     orphan_options=(-a --dry-run --delete --itemize-changes)
+    orphan_sources=("${source}/")
     if [[ "${sync_dir}" == "skills" ]]; then
       orphan_options+=(--exclude=/synced/)
+      if [[ "${third_party_state}" == "ready" ]]; then
+        orphan_sources+=("${third_party_skills}/")
+      elif [[ "${third_party_state}" == "failed" ]]; then
+        # Without a fetch there is nothing to compare deployed plugins against.
+        while IFS= read -r plugin_name; do
+          orphan_options+=("--exclude=/${plugin_name}/")
+        done < <(list_deployed_plugin_names)
+      fi
     fi
     while IFS= read -r path; do
       echo "  ${target}/${path}"
       found=true
-    done < <(rsync "${orphan_options[@]}" "${source}/" "${target}/" |
+    done < <(rsync "${orphan_options[@]}" "${orphan_sources[@]}" "${target}/" |
       sed -n 's/^\*deleting  *//p')
   done
   if [[ "${found}" == false ]]; then
@@ -238,29 +324,36 @@ merge_mcp_servers() {
 # rsync replaces a destination file or symlink that sits where the repo has a
 # directory (and the reverse), which would delete content this repo does not
 # own. Such clashes stop the run before anything is written.
+list_tree_type_conflicts() {
+  local source="$1" target="$2"
+  local relative
+  [[ -d "${source}" ]] || return 0
+  while IFS= read -r -d '' relative; do
+    relative="${relative#.}"
+    # A symlinked top-level directory is followed by rsync, not replaced.
+    if [[ -n "${relative}" && -L "${target}${relative}" ]] ||
+      [[ -e "${target}${relative}" && ! -d "${target}${relative}" ]]; then
+      echo "  ${target}${relative} (${source}${relative} is a directory)"
+    fi
+  done < <(cd "${source}" && find . -type d -print0)
+  while IFS= read -r -d '' relative; do
+    relative="${relative#.}"
+    if [[ -L "${target}${relative}" ]]; then
+      echo "  ${target}${relative} (a symlink; ${source}${relative} is a file)"
+    elif [[ -d "${target}${relative}" ]]; then
+      echo "  ${target}${relative} (${source}${relative} is a file)"
+    fi
+  done < <(cd "${source}" && find . -type f -print0)
+}
+
 list_type_conflicts() {
-  local sync_dir source target relative
+  local sync_dir
   for sync_dir in "${sync_dirs[@]}"; do
-    source="${repo_claude}/${sync_dir}"
-    target="${dest_claude}/${sync_dir}"
-    [[ -d "${source}" ]] || continue
-    while IFS= read -r -d '' relative; do
-      relative="${relative#.}"
-      # A symlinked top-level directory is followed by rsync, not replaced.
-      if [[ -n "${relative}" && -L "${target}${relative}" ]] ||
-        [[ -e "${target}${relative}" && ! -d "${target}${relative}" ]]; then
-        echo "  ${target}${relative} (the repo has a directory here)"
-      fi
-    done < <(cd "${source}" && find . -type d -print0)
-    while IFS= read -r -d '' relative; do
-      relative="${relative#.}"
-      if [[ -L "${target}${relative}" ]]; then
-        echo "  ${target}${relative} (a symlink; the repo has a file here)"
-      elif [[ -d "${target}${relative}" ]]; then
-        echo "  ${target}${relative} (the repo has a file here)"
-      fi
-    done < <(cd "${source}" && find . -type f -print0)
+    list_tree_type_conflicts "${repo_claude}/${sync_dir}" "${dest_claude}/${sync_dir}"
   done
+  if [[ "${third_party_state}" == "ready" ]]; then
+    list_tree_type_conflicts "${third_party_skills}" "${dest_claude}/skills"
+  fi
   local sync_file
   for sync_file in "${sync_files[@]}"; do
     if [[ -f "${repo_claude}/${sync_file}" && -d "${dest_claude}/${sync_file}" ]]; then
@@ -302,9 +395,11 @@ if ! command -v rsync >/dev/null 2>&1; then
 fi
 
 warn_about_unsynced_dirs
+fetch_third_party_skills
 abort_on_type_conflicts
 render_files
 show_file_diffs
+show_third_party_changes
 
 if [[ "${dry_run}" == true ]]; then
   echo "Dry run: nothing will be changed."
@@ -320,6 +415,7 @@ fi
 confirm_or_abort
 mkdir -p "${dest_claude}"
 copy_dirs
+copy_third_party_skills
 copy_files
 report_orphans
 merge_mcp_servers
