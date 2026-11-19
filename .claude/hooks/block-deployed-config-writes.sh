@@ -12,8 +12,10 @@ Usage: block-deployed-config-writes.sh < event.json
 PreToolUse hook for Write, Edit and NotebookEdit. Reads the hook event JSON on
 stdin. When the target file is a deployed copy under ~/.claude (rules/,
 skills/, hooks/, output-styles/, agents/, settings.json or CLAUDE.md) it prints
-a "deny" decision naming the file to edit in the claude-config repo. Otherwise
-it prints nothing and exits 0.
+a "deny" decision naming the file to edit in the claude-config repo. For a
+third-party skill (a plugin named in the repo's third-party-skills.json) that
+file is the manifest, since the skill itself is fetched from upstream.
+Otherwise it prints nothing and exits 0.
 
 ~/.claude/skills/synced/ (managed by Claude Code) and the rest of ~/.claude
 stay writable.
@@ -90,9 +92,25 @@ case "${path}" in
   *) exit 0 ;;
 esac
 
-source_path="${repo}/.claude${path#"${deployed}"}"
-reason="${path} is a deployed copy. The next deploy from the claude-config repo overwrites it, \
+third_party_manifest="${repo}/third-party-skills.json"
+
+is_third_party_skill() {
+  [[ "${path}" == "${deployed}"/skills/* && -f "${third_party_manifest}" ]] || return 1
+  local path_under_skills="${path#"${deployed}/skills/"}"
+  jq -e --arg plugin "${path_under_skills%%/*}" \
+    'any(.sources[]?; .plugin == $plugin)' "${third_party_manifest}" >/dev/null 2>&1
+}
+
+if is_third_party_skill; then
+  reason="${path} is a deployed copy of a third-party skill. The next deploy from the claude-config \
+repo fetches it from upstream again, so an edit here is lost, and the repo holds no copy of the file \
+to edit. To change which skills are installed or how their text is rewritten, edit \
+${third_party_manifest}, then run ${repo}/setup.sh to deploy it."
+else
+  source_path="${repo}/.claude${path#"${deployed}"}"
+  reason="${path} is a deployed copy. The next deploy from the claude-config repo overwrites it, \
 so an edit here is lost. Edit ${source_path} instead, then run ${repo}/setup.sh to deploy it."
+fi
 
 jq -n --arg reason "${reason}" '{
   hookSpecificOutput: {
