@@ -18,7 +18,43 @@
         "skills/engineering/tdd",
         "skills/productivity/writing-for-agents"
       ],
-      "rewrites": [{ "from": "code-review", "to": "reviewing-code" }]
+      "rewrites": [
+        {
+          "from": "code-review",
+          "to": "reviewing-code"
+        }
+      ]
+    },
+    {
+      "plugin": "aws",
+      "type": "aws-agent-toolkit",
+      "skills": [
+        "amazon-bedrock",
+        "aws-ai-ml",
+        "aws-auth",
+        "aws-billing-and-cost-management",
+        "aws-cdk",
+        "aws-cloudformation",
+        "aws-compute",
+        "aws-containers",
+        "aws-database",
+        "aws-deployment",
+        "aws-iam",
+        "aws-investigation",
+        "aws-messaging-and-streaming",
+        "aws-networking",
+        "aws-observability",
+        "aws-sdk-js-v3-usage",
+        "aws-sdk-python-usage",
+        "aws-sdk-swift-usage",
+        "aws-security",
+        "aws-serverless",
+        "aws-storage",
+        "aws-well-architected-review",
+        "launch-with-aws",
+        "ocr-document-processing-skill",
+        "signing-in-to-aws"
+      ]
     }
   ]
 }
