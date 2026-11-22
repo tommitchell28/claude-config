@@ -14,9 +14,9 @@ Source of truth for `~/.claude/` configuration: settings, skills, hooks, rules, 
 | `.claude/settings.json`       | yes      | User settings; hook paths are rewritten to `$HOME` on deploy              |
 | `.claude/CLAUDE.md`           | yes      | Instructions loaded in every session                                      |
 | `.mcp.json`                   | merged   | MCP servers, merged into `~/.claude.json`                                 |
-| `third-party-skills.json`     | fetched  | Skills fetched from other git repos (see Third-Party Skills)              |
+| `third-party-skills.json`     | fetched  | Skills fetched from other git repos and from AWS (see Third-Party Skills) |
 | `scripts/`                    | no       | Scripts `setup.sh` calls                                                  |
-| `.third-party/`               | no       | Clones of upstream repos and the skill copies built from them; gitignored |
+| `.third-party/`               | no       | Upstream downloads and the skill copies built from them; gitignored       |
 | `.claude/plans/`              | no       | Plan files for work on this repo                                          |
 | `.claude/code-reviews/`       | no       | Output of the `reviewing-code` skill; gitignored                          |
 | `.claude/settings.local.json` | no       | Settings for this repo only                                               |
@@ -46,7 +46,9 @@ Source of truth for `~/.claude/` configuration: settings, skills, hooks, rules, 
 
 ## Third-Party Skills
 
-`setup.sh` fetches the skills named in `third-party-skills.json` and deploys each source as a plugin under `~/.claude/skills/<plugin>/`. Claude Code lists a plugin's skills as `<plugin>:<skill>`, so they cannot clash with the skills in this repo. The file holds a `sources` array; each entry looks like:
+`setup.sh` fetches the skills named in `third-party-skills.json` and deploys each source as a plugin under `~/.claude/skills/<plugin>/`. Claude Code lists a plugin's skills as `<plugin>:<skill>`, so they cannot clash with the skills in this repo. The file holds a `sources` array of two types.
+
+A git source, the default, copies skill directories from a git repo:
 
 ```json
 {
@@ -58,26 +60,48 @@ Source of truth for `~/.claude/` configuration: settings, skills, hooks, rules, 
 }
 ```
 
+An `aws-agent-toolkit` source downloads skills from the AWS Agent Toolkit catalog, the one `aws configure agent-toolkit` and `aws agent-toolkit add-skill` install from:
+
+```json
+{
+  "plugin": "aws",
+  "type": "aws-agent-toolkit",
+  "skills": ["aws-iam", "aws-storage"]
+}
+```
+
 | Field      | Holds                                                                                                     |
 | ---------- | --------------------------------------------------------------------------------------------------------- |
 | `plugin`   | Plugin name and deployed directory; must not match a directory in `.claude/skills/`                       |
-| `repo`     | Git URL of the upstream repo                                                                              |
-| `ref`      | Branch or tag to fetch                                                                                    |
-| `skills`   | Upstream paths of the skill directories to install                                                        |
+| `type`     | `git` (the default) or `aws-agent-toolkit`                                                                |
+| `repo`     | Git sources only: the Git URL of the upstream repo                                                        |
+| `ref`      | Git sources only: the branch or tag to fetch                                                              |
+| `skills`   | Git sources: upstream paths of the skill directories. AWS sources: catalog skill names                    |
 | `rewrites` | Optional whole-word replacements applied to the installed copies, e.g. to point at a skill from this repo |
 
-- **Add a skill.** Add its upstream path to `skills`, or add an entry for another repo, then run `./setup.sh`.
+The AWS source:
+
+- **Needs no AWS sign-in.** The catalog's read calls are unauthenticated, and the AWS CLI is not used.
+- **Checks every download** against the SHA-256 checksum the catalog publishes for it, which catches a corrupted download.
+- **Refuses a skill over 10 MiB,** downloaded or unpacked, the limit the AWS CLI applies.
+- **Records versions** in `skill-versions.txt` in the deployed plugin.
+- **Installs only the listed skills.** A skill in AWS's default set that `skills` does not list is printed as `NEW:` for you to add; a listed skill outside the default set is printed as `NOTE:` and still installed.
+
+Managing third-party skills:
+
+- **Add a skill.** Add its upstream path or catalog name to `skills`, or add an entry for another source, then run `./setup.sh`.
   - Also add any skill the new one calls through the Skill tool.
-- **Update.** Every run fetches the latest commit of `ref`; there is no pinning.
-  - Before the confirmation prompt, the script prints the upstream commit and the files that differ from the deployed copies.
+- **Update.** Every run fetches the latest commit of `ref`, or the latest version of each AWS skill; there is no pinning.
+  - Before the confirmation prompt, the script prints where the skills came from and the files that differ from the deployed copies.
 - **Remove a skill.** Delete it from `skills` and run `./setup.sh`; the orphan report then lists the deployed copy, which you delete by hand.
 - **Reload.** A running session picks up the change after `/reload-plugins` or a restart.
 
-| Situation                                          | Result                                                                                        |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Fetch fails, or `git`, `jq` or `perl` is missing   | The rest of the config is deployed; third-party skills already in `~/.claude/` are left alone |
-| Manifest is invalid, e.g. a clashing `plugin` name | The run stops before writing anything                                                         |
-| A rewrite's `from` matches nothing                 | A warning is printed, usually because upstream changed its wording                            |
+| Situation                                                                 | Result                                                                                        |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Fetch fails, a download fails its checksum, or a required tool is missing | The rest of the config is deployed; third-party skills already in `~/.claude/` are left alone |
+| Manifest is invalid, e.g. a clashing `plugin` name                        | The run stops before writing anything                                                         |
+| A rewrite's `from` matches nothing                                        | A warning is printed, usually because upstream changed its wording                            |
+| AWS's default set has a skill the manifest does not list                  | A `NEW:` line is printed; nothing is installed until you add it                               |
 
 ## Changes Made on the Machine
 
