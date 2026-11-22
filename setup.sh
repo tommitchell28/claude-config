@@ -12,11 +12,13 @@ and CLAUDE.md from this repo's .claude/ directory to ~/.claude/.
 Also fetches the third-party skills named in third-party-skills.json (see
 scripts/fetch-third-party-skills.sh --help) and deploys each source as a
 plugin under ~/.claude/skills/<plugin>/, so its skills are listed as
-<plugin>:<skill>. The latest upstream commit is fetched on every run, dry runs
+<plugin>:<skill>. The latest upstream commit, or for an AWS Agent Toolkit
+source the latest version of each skill, is fetched on every run, dry runs
 included; the fetch writes only to the gitignored .third-party/ in this repo.
-The upstream commit and the files that differ from the deployed copies are
-printed before anything is written. If the fetch fails, the rest of the config
-is deployed and the third-party skills already in ~/.claude/ are left alone.
+Where the skills came from, any skills in AWS's default set that the manifest
+does not list, and the files that differ from the deployed copies are printed
+before anything is written. If the fetch fails, the rest of the config is
+deployed and the third-party skills already in ~/.claude/ are left alone.
 
 Nothing in ~/.claude/ is ever deleted. Files under those directories that are
 no longer in the repo or the manifest are reported so you can remove them by
@@ -28,8 +30,9 @@ about to be written is printed first, so changes made on the machine (through
 
 Also merges the repo-root .mcp.json's "mcpServers" into ~/.claude.json
 (user-level MCP config), backing up that file to ~/.claude.json.bak first.
-Requires rsync; the MCP merge requires jq; third-party skills require git,
-jq and perl.
+Requires rsync; the MCP merge requires jq; third-party skills require jq and
+perl, plus git for git sources and curl, unzip and sha256sum for AWS Agent
+Toolkit sources.
 
 Stops before writing anything if a destination path clashes with the repo
 layout (a file or symlink where the repo has a directory, or the reverse), or
