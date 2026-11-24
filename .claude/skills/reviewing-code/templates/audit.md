@@ -21,6 +21,7 @@ Audit template. Written alongside the report at RUN_DIR/review/audit.md (the AUD
 | Agents         | `<lite: 2 bundles \| standard/deep: 1 per lens; N total>`                          |
 | Per-agent read | `<lenses: header shard + all file shards; verifiers: header shard + 1 file shard>` |
 | Shard dir      | `<SHARD_DIR path; N per-file shards>`                                              |
+| Models         | `<discovery; lenses by name; verifiers; escalations and deep second opinion>`      |
 
 ## Execution summary
 
@@ -59,18 +60,18 @@ Audit template. Written alongside the report at RUN_DIR/review/audit.md (the AUD
 
 ## Lenses run
 
-| Lens     | Findings raised |
-| -------- | --------------- |
-| `<lens>` | `<count>`       |
+| Lens     | Model     | Findings raised |
+| -------- | --------- | --------------- |
+| `<lens>` | `<model>` | `<count>`       |
 
 ## Verification outcomes
 
 <!-- One row per finding that entered verification. Omit this whole section if verify was skipped
 (lite, or no-verify). For deep, note a second-opinion result in the Reason (e.g. "upheld twice"). -->
 
-| Finding         | Lens     | Verdict              | Reason                                   |
-| --------------- | -------- | -------------------- | ---------------------------------------- |
-| `<short label>` | `<lens>` | `<UPHELD / DROPPED>` | `<why the skeptic upheld or refuted it>` |
+| Finding         | Lens     | Verifier                                | Verdict              | Reason                                   |
+| --------------- | -------- | --------------------------------------- | -------------------- | ---------------------------------------- |
+| `<short label>` | `<lens>` | `<sonnet \| sonnet → opus (escalated)>` | `<UPHELD / DROPPED>` | `<why the skeptic upheld or refuted it>` |
 
 ## Files processed
 
