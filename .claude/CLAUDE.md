@@ -52,6 +52,14 @@ Announce which `.claude/skills/` skill(s) you're using — brief inline mention 
 
 Every code review goes through the `reviewing-code` skill. Do not use the built-in `/code-review` unless Tom asks for it by name.
 
+## Delegation
+
+For the main session only. A subagent does its own task itself.
+
+- On long work with several parts, keep the main session's context for decisions: subagents read, build and check, and report back briefly.
+- Before delegating building or verification to a subagent, load the `delegating-work` skill.
+- When a tracked issue spans several areas and would not fit one context, suggest `/orchestrate-ticket <issue>` in one sentence, then carry on as asked. Only Tom starts it.
+
 ## Plans
 
 ### CRITICAL: Requirements first, implementation second
