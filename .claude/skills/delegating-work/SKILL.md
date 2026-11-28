@@ -68,6 +68,11 @@ A subagent knows the brief and the `CLAUDE.md` files, and nothing else from the 
 - **Scout before building.** A read-only pass maps the files and records the state before any edit: captures, test counts, whatever the work will later be compared against.
 - **A builder commits as it goes,** in small commits, when commits are allowed, and lists them in its report.
 - **A failure goes back to the agent that built it,** by SendMessage, while it still holds the context. A new slice gets a new agent.
+- **Check in on an agent that has been silent for 15 minutes.** A background agent reports only when it stops, so a stuck one looks the same as a busy one.
+  - Keep a 15-minute timer running while any agent is out: a background `sleep 900`, which wakes the orchestrator when it ends. Start another each time one fires.
+  - When it fires, look for progress first: new commits, or changed files in the agent's tree.
+  - An agent with no progress gets a SendMessage asking where it is. A read-only agent that is still researching is told to stop and report what it has.
+  - A brief for research or review states a time or lookup budget, so the agent stops without being asked.
 - **Verify independently, and again after every round of fixes.** An agent that did not do the work measures it against the requirement. A fix made for a review finding can introduce a new fault, and only a second measurement finds it.
 
 ## The Notes File
