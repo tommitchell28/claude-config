@@ -2,7 +2,7 @@
 # Create one timestamped directory for a review and print its artifact paths.
 set -euo pipefail
 
-readonly OUTPUT_DIR=".claude/code-reviews"
+readonly REVIEWS_SUBDIR=".claude/code-reviews"
 
 usage() {
 	cat <<'USAGE'
@@ -15,7 +15,9 @@ Creates .claude/code-reviews/review-YYYYMMDD-HHMMSS[-slug]/ using UTC and prints
   REPORT=<run directory>/review/report.md
   AUDIT=<run directory>/review/audit.md
 
-Paths are relative to the reviewed repo's root. The optional slug is a short label such as
+Paths are relative to the reviewed repo's root. In a linked worktree, the run directory goes
+under the main worktree's .claude/code-reviews/ instead and the paths are absolute, so the
+review outlives the worktree. The optional slug is a short label such as
 pr-12 or issue-7: letters, digits and single hyphens, converted to lowercase. Fails if the run exists.
 USAGE
 }
@@ -38,11 +40,31 @@ parse_args() {
 	[[ -z "$slug" || "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || fail_with_usage "invalid slug '$slug'"
 }
 
+# Print the main worktree's path when the current directory is a linked worktree, else nothing.
+main_worktree_if_linked() {
+	local git_dir common_dir
+	git_dir="$(git rev-parse --path-format=absolute --git-dir 2>/dev/null)" || return 0
+	common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+	[ "$git_dir" != "$common_dir" ] || return 0
+	git worktree list --porcelain | sed -n '1s/^worktree //p'
+}
+
+output_dir() {
+	local main_worktree
+	main_worktree="$(main_worktree_if_linked)"
+	if [ -n "$main_worktree" ]; then
+		echo "$main_worktree/$REVIEWS_SUBDIR"
+	else
+		echo "$REVIEWS_SUBDIR"
+	fi
+}
+
 main() {
 	parse_args "$@"
-	mkdir -p "$OUTPUT_DIR"
-	local run_dir
-	run_dir="$OUTPUT_DIR/review-$(date -u +%Y%m%d-%H%M%S)${slug:+-$slug}"
+	local reviews_dir run_dir
+	reviews_dir="$(output_dir)"
+	mkdir -p "$reviews_dir"
+	run_dir="$reviews_dir/review-$(date -u +%Y%m%d-%H%M%S)${slug:+-$slug}"
 	mkdir "$run_dir"
 	mkdir "$run_dir/context-shards" "$run_dir/review"
 	printf 'RUN_DIR=%s\nCONTEXT_FILE=%s/context.md\nSHARD_DIR=%s/context-shards\nREPORT=%s/review/report.md\nAUDIT=%s/review/audit.md\n' \
