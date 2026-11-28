@@ -39,12 +39,18 @@ Pass `model` on every Agent call. An agent without one inherits the orchestrator
 
 A subagent knows the brief and the `CLAUDE.md` files, and nothing else from the conversation. A brief states:
 
+- **For an agent that runs commands, a shell check first:** "run `pwd` and print the branch name; if the shell refuses or you are elsewhere, stop and report the refusal's exact text".
 - **The goal and where it fits:** the issue, this agent's part of it, and what is already done or ruled out.
 - **Where to start:** file paths and document sections by name. Point at them; the agent reads them itself.
 - **What done means:** a condition the agent can check, such as "every acceptance criterion measured, with the number".
 - **Its limits:** what to leave alone, whether it may commit, whether it is read-only.
 - **The two or three rules that matter most for this job,** restated even though `CLAUDE.md` has them.
   - An agent that commits is told the commit rules, and that a hook failure means stop and report.
+  - An agent that commits in a worktree is told how to use git there. The harness guards worktrees and its rules may change, so these are habits that keep clear of it:
+    - one plain git command per call, with no compound commands and no heredocs;
+    - no `-C` and no path into another checkout;
+    - commit messages through `-m` flags, one per paragraph, trailers included;
+    - never `git stash`, since the stash is shared between worktrees.
   - The remaining repo rules are left to `CLAUDE.md`.
 - **The report wanted:** its shape and a word limit, as below.
 - **For a reviewer or verifier, the work and the requirement only.** An agent handed a conclusion returns it confirmed. Tell a verifier to be sceptical and to measure.
@@ -67,6 +73,8 @@ A subagent knows the brief and the `CLAUDE.md` files, and nothing else from the 
 - **Read-only agents run in parallel,** launched in one message.
 - **Scout before building.** A read-only pass maps the files and records the state before any edit: captures, test counts, whatever the work will later be compared against.
 - **A builder commits as it goes,** in small commits, when commits are allowed, and lists them in its report.
+- **An agent that reports it could not run commands is replaced, not messaged.** Its working directory cannot be changed after launch.
+- **Agents share one folder for heavy tool state.** When agents need a cache or data folder apart from the repo's default, make one and give every agent the same path. Only one agent builds at a time, so they never use it at once; one folder per agent multiplies large caches until the disk fills.
 - **A failure goes back to the agent that built it,** by SendMessage, while it still holds the context. A new slice gets a new agent.
 - **Check in on an agent that has been silent for 15 minutes.** A background agent reports only when it stops, so a stuck one looks the same as a busy one.
   - Keep a 15-minute timer running while any agent is out: a background `sleep 900`, which wakes the orchestrator when it ends. Start another each time one fires.
@@ -78,3 +86,7 @@ A subagent knows the brief and the `CLAUDE.md` files, and nothing else from the 
 ## The Notes File
 
 Keep one notes file in the scratchpad and give its path in every builder's brief, as working notes to append to. Each builder appends its decisions, departures from defaults, and gaps. Where a builder's report shows it did not, append them from the report yourself. The pull request body and the closing message are written from this file, since the orchestrator's own memory of early work may have been compacted away.
+
+## The Scratchpad
+
+The scratchpad may sit on a memory-backed `/tmp` with a small quota. Delete large scratch folders before the closing message, and check free space (`df -h`) when an agent reports a full disk.
