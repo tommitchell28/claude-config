@@ -16,7 +16,7 @@ Take issue `$ARGUMENTS` from reading it to an open pull request, **unattended**,
   - This skill fixes the sequence.
   - Checks, review tier and what a pull request shows come from the repo's `CLAUDE.md` files and the issue.
   - The defaults below apply where the repo is silent.
-- **One run per checkout.** A second run at the same time needs its own worktree, since both switch branches and commit.
+- **Every run works in its own worktree.** Other sessions may use the same checkout at the same time and switch its branch.
 - **Stop early only for a deliberate blocker:** a hook or guardrail that cannot be satisfied, or access that was withheld. Say what is done and what is not.
 
 ## Steps
@@ -30,14 +30,15 @@ It sets how every subagent below is briefed, which model it runs on, and what it
 Read the issue yourself (`gh issue view`, or as the repo's issue tracker document says), and every document it names.
 
 - **If the working tree has uncommitted changes, stop** and report them. They are someone's work.
-- **Create a branch** off the up-to-date default branch, named for the issue.
+- **Enter a worktree** for a branch off the up-to-date default branch, named for the issue, before reading code, scouting or building. Use the harness's worktree tool, so the session itself is isolated, not only its agents.
+- **Install dependencies** in the worktree before the first check, as the repo's documents say; a fresh worktree has none.
 - **Start the notes file** with the acceptance criteria.
 
 Done when every acceptance criterion is listed with how it will be measured.
 
 ### 3. Scout
 
-Launch read-only agents in parallel, before any edit:
+Launch read-only agents in parallel, before any edit. No agent launches before step 2's worktree: an agent's working directory is fixed when it launches.
 
 - **A map of the code** for each area the issue touches.
 - **The state before the change,** in whatever form the issue's checks will compare against, kept where no later step writes.
@@ -95,7 +96,7 @@ Done when every finding is fixed or on the disputed list, and steps 6 and 7 pass
 
 ### 10. Open the pull request
 
-Use the `creating-pull-requests` skill. Give it issue `$ARGUMENTS` with the closing keyword `Closes`, and tell it the run is unattended, so it asks nothing. Write the body from the notes file, with these as sections after its Summary:
+Use the `creating-pull-requests` skill. Give it issue `$ARGUMENTS` with the closing keyword `Closes` (or `Refs` where the issue or the repo says the issue stays open after the merge), and tell it the run is unattended, so it asks nothing. Write the body from the notes file, with these as sections after its Summary:
 
 - **What the issue or the repo's documents say a pull request shows.**
 - **Each decision made in the user's place,** with where it is recorded.
@@ -108,9 +109,10 @@ Done when `gh pr view` shows the pull request with each item above in its body.
 
 ### 11. Stop
 
-Merging is the user's. The closing message gives:
+Merging is the user's, and so is cleanup: leave the worktree on disk. The closing message gives:
 
 - the pull request link;
+- the worktree's path;
 - the decisions that departed from the issue's defaults or from earlier decisions;
 - the issues opened;
 - the lessons for the skills;
@@ -131,4 +133,5 @@ Merging is the user's. The closing message gives:
 | The review refuses to run on a dirty tree                    | The tree was clean at step 2, so the files are this run's: commit or remove them, and re-run      |
 | A shared tool is held by another session (a browser profile) | Work round it, and record the way round as a lesson in step 8                                     |
 | A subagent broke a rule its brief stated                     | Undo what can be undone, and name it in the pull request                                          |
+| The repo cannot make a worktree                              | Stop and say so                                                                                   |
 | A repo document says to ask the user                         | Take the option that leaves the user's files and processes untouched, and record it as a decision |
